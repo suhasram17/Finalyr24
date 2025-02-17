@@ -1,4 +1,4 @@
-# Finalyr24
+# Finalyr24 Eye aspect ratio detection
 import cv2
 import serial
 import time
