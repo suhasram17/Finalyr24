@@ -1,0 +1,112 @@
+#define motor1Pin1 6   // Left motor forward
+#define motor1Pin2 7   // Left motor backward
+#define motor2Pin1 8   // Right motor forward
+#define motor2Pin2 9   // Right motor backward
+#define enablePin1 10  // Left motor speed control
+#define enablePin2 11  // Right motor speed control
+
+#define trigPinLeft 4  // Ultrasonic sensor (left) trig
+#define echoPinLeft 5  // Ultrasonic sensor (left) echo
+#define trigPinBack 2  // Ultrasonic sensor (back) trig
+#define echoPinBack 3  // Ultrasonic sensor (back) echo
+
+#define ledPin 13      // LED pin
+#define buzzerPin 12   // Buzzer pin
+
+long getDistance(int trigPin, int echoPin);
+unsigned long eyeClosedStartTime = 0;
+bool eyeClosed = false;
+
+void setup() {
+  pinMode(motor1Pin1, OUTPUT);
+  pinMode(motor1Pin2, OUTPUT);
+  pinMode(motor2Pin1, OUTPUT);
+  pinMode(motor2Pin2, OUTPUT);
+  pinMode(enablePin1, OUTPUT);
+  pinMode(enablePin2, OUTPUT);
+  pinMode(trigPinLeft, OUTPUT);
+  pinMode(echoPinLeft, INPUT);
+  pinMode(trigPinBack, OUTPUT);
+  pinMode(echoPinBack, INPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+
+  Serial.begin(9600); // Communication with Python
+}
+
+void loop() {
+  // Move straight at high speed
+  moveStraight(255);
+
+  if (Serial.available() > 0) {
+    char data = Serial.read();
+    if (data == 'E') { // Eyes closed detected
+      if (!eyeClosed) {
+        eyeClosed = true;
+        eyeClosedStartTime = millis();
+      }
+
+      // Blink LED and Buzzer every second
+      unsigned long currentTime = millis();
+      if ((currentTime / 1000) % 2 == 0) {
+        digitalWrite(ledPin, HIGH);
+        digitalWrite(buzzerPin, HIGH);
+      } else {
+        digitalWrite(ledPin, LOW);
+        digitalWrite(buzzerPin, LOW);
+      }
+
+      // If eyes closed for more than 3 seconds
+      if (millis() - eyeClosedStartTime > 3000) {
+        slowDown();
+        delay(5000); // Slow down for 5 seconds
+        stopMotors(); // Stop motors permanently
+
+        // Turn off LED and buzzer
+        digitalWrite(ledPin, LOW);
+        digitalWrite(buzzerPin, LOW);
+
+        // Enter an infinite loop to stop further actions
+        while (1) {
+          // System stopped
+        }
+      }
+    } else {
+      eyeClosed = false; // Reset eyeClosed flag if eyes are open
+    }
+  }
+}
+
+// Functions for movement
+void moveStraight(int speed) {
+  analogWrite(enablePin1, speed);
+  analogWrite(enablePin2, speed);
+  digitalWrite(motor1Pin1, HIGH);
+  digitalWrite(motor1Pin2, LOW);
+  digitalWrite(motor2Pin1, HIGH);
+  digitalWrite(motor2Pin2, LOW);
+}
+
+void slowDown() {
+  analogWrite(enablePin1, 100); // Reduce motor speed
+  analogWrite(enablePin2, 100);
+}
+
+void stopMotors() {
+  digitalWrite(motor1Pin1, LOW);
+  digitalWrite(motor1Pin2, LOW);
+  digitalWrite(motor2Pin1, LOW);
+  digitalWrite(motor2Pin2, LOW);
+}
+
+// Ultrasonic sensor distance calculation
+long getDistance(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH);
+  long distance = duration * 0.034 / 2; // Convert to cm
+  return distance;
+}
